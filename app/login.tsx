@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useToast } from '@/contexts/ToastContext';
 import { authService } from '@/services/auth';
@@ -82,10 +82,21 @@ export default function LoginScreen() {
 
     try {
       setResetLoading(true);
-      await authService.sendTemporaryPassword(resetEmail.trim());
-      showToast('Temporary password sent to your email!', 'success');
-      setShowForgotPassword(false);
-      setResetEmail('');
+      const data = await authService.sendTemporaryPassword(resetEmail.trim());
+
+      if (data.debug_password) {
+        Alert.alert(
+          'Temporary Password (Development Only)',
+          `Your temporary password is:\n\n${data.debug_password}\n\nPlease use this to login and then change your password in Profile > Change Password.`,
+          [{ text: 'OK' }]
+        );
+        setShowForgotPassword(false);
+        setResetEmail('');
+      } else {
+        showToast('Temporary password sent to your email!', 'success');
+        setShowForgotPassword(false);
+        setResetEmail('');
+      }
     } catch (err: any) {
       console.error('Failed to send temporary password:', err);
       const errorMessage = err.message || 'Failed to send temporary password';

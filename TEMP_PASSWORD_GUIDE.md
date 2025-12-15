@@ -114,14 +114,34 @@ The Edge Function supports email sending via Resend:
 3. Configure domain verification
 4. Edge Function will automatically send emails
 
+### Development Mode (No Email Service)
+
 If no RESEND_API_KEY is configured:
-- Function still works
-- Password is logged to console (for testing)
-- User won't receive email (manual communication needed)
+- Function still works and generates temporary password
+- Password is returned in API response as `debug_password` field
+- Password is logged to console
+- User sees password in an Alert dialog (marked "Development Only")
+- No email is sent
+
+**IMPORTANT**: The `debug_password` field in the response is for development/testing only and should be removed before production deployment. In production, configure a proper email service.
 
 ## User Experience Flow
 
-### Happy Path
+### Happy Path (Development Mode)
+
+1. User forgets password → clicks "Forgot Password?"
+2. Enters email → clicks "Send Temporary Password"
+3. Sees Alert dialog with temporary password (e.g., "K7N3R8Z2")
+4. Clicks OK and copies the password
+5. Logs in with temporary password
+6. Sees toast: "Login successful!"
+7. Goes to Profile → clicks "Change Password"
+8. Enters temporary password as current password
+9. Enters and confirms new password
+10. Sees "Password changed successfully!"
+11. Can now use new password for future logins
+
+### Happy Path (Production with Email)
 
 1. User forgets password → clicks "Forgot Password?"
 2. Enters email → clicks "Send Temporary Password"
@@ -201,3 +221,42 @@ If users report not receiving the temporary password email:
 - ✅ Simple copy-paste flow
 - ✅ User can change password anytime
 - ✅ Clear expiration policy
+
+## Preparing for Production
+
+Before deploying to production, you should:
+
+1. **Configure Email Service**
+   - Sign up for Resend (or another email service)
+   - Get your API key
+   - Set `RESEND_API_KEY` environment variable in Supabase
+   - Verify domain ownership in Resend dashboard
+   - Update the "from" email address in the Edge Function
+
+2. **Remove Development Code** (Optional but Recommended)
+   - The `debug_password` field will automatically not be included when `RESEND_API_KEY` is set
+   - However, you may want to remove the development code entirely from `app/login.tsx`:
+     ```typescript
+     // Remove this section in production:
+     if (data.debug_password) {
+       Alert.alert(
+         'Temporary Password (Development Only)',
+         `Your temporary password is:\n\n${data.debug_password}\n\nPlease use this to login and then change your password in Profile > Change Password.`,
+         [{ text: 'OK' }]
+       );
+       setShowForgotPassword(false);
+       setResetEmail('');
+     } else {
+     ```
+   - And simplify to always show the success toast
+
+3. **Test Email Delivery**
+   - Test with your own email address first
+   - Check spam/junk folders
+   - Verify email formatting and links
+   - Test with different email providers (Gmail, Outlook, etc.)
+
+4. **Monitor Usage**
+   - Check Edge Function logs in Supabase dashboard
+   - Monitor for failed email deliveries
+   - Track temporary password usage patterns

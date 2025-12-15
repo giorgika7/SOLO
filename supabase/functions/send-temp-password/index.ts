@@ -123,6 +123,11 @@ Deno.serve(async (req: Request) => {
 
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
 
+    let responseData: { success: boolean; message: string; debug_password?: string } = {
+      success: true,
+      message: "Temporary password has been sent to your email",
+    };
+
     if (resendApiKey) {
       const resendResponse = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -142,15 +147,16 @@ Deno.serve(async (req: Request) => {
         console.error("Failed to send email via Resend");
       }
     } else {
+      console.log("⚠️ DEVELOPMENT ONLY - REMOVE IN PRODUCTION");
       console.log("Email would be sent to:", normalizedEmail);
       console.log("Temporary password:", tempPassword);
+
+      responseData.debug_password = tempPassword;
+      responseData.message = "Temporary password generated (no email service configured)";
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Temporary password has been sent to your email",
-      }),
+      JSON.stringify(responseData),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
