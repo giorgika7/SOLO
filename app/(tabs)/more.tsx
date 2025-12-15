@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text, StyleSheet, TouchableOpacity, Linking, Alert } from 'react-native';
-import { ChevronRight, User, LogOut, Trash2 } from 'lucide-react-native';
+import { View, ScrollView, Text, StyleSheet, TouchableOpacity, Linking, Alert, Modal } from 'react-native';
+import { ChevronRight, User, LogOut, Trash2, Key, Eye, EyeOff } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { colors, typography, spacing, borderRadius } from '@/constants/theme';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { Input } from '@/components/Input';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/contexts/ToastContext';
 import { haptics } from '@/utils/haptics';
 import { supabase, auth } from '@/services/supabase';
+import { authService } from '@/services/auth';
 import type { Order } from '@/types';
 
 const styles = StyleSheet.create({
@@ -148,6 +150,54 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gray[200],
     marginVertical: spacing[6],
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing[6],
+  },
+  modalContent: {
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    padding: spacing[6],
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.black,
+    marginBottom: spacing[2],
+  },
+  modalDescription: {
+    fontSize: typography.fontSize.sm,
+    color: colors.gray[600],
+    marginBottom: spacing[4],
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: spacing[3],
+    marginTop: spacing[2],
+  },
+  modalButton: {
+    flex: 1,
+  },
+  passwordInputWrapper: {
+    position: 'relative',
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: spacing[3],
+    top: '50%',
+    transform: [{ translateY: -12 }],
+  },
+  passwordStrength: {
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    marginTop: spacing[1],
+    marginLeft: spacing[1],
+  },
 });
 
 const MENU_ITEMS = [
@@ -171,6 +221,14 @@ export default function MoreScreen() {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -250,6 +308,63 @@ export default function MoreScreen() {
         },
       ]
     );
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword) {
+      showToast('Please enter your current password', 'error');
+      return;
+    }
+
+    if (!newPassword) {
+      showToast('Please enter a new password', 'error');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      showToast('Password must be at least 6 characters', 'error');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      showToast('Passwords do not match', 'error');
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      await authService.updatePassword(currentPassword, newPassword);
+
+      haptics.success();
+      showToast('Password changed successfully!', 'success');
+
+      setShowChangePassword(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      console.error('Failed to change password:', err);
+      haptics.error();
+      showToast(err.message || 'Failed to change password', 'error');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const getPasswordStrength = (password: string): string => {
+    if (password.length === 0) return '';
+    if (password.length < 6) return 'Weak';
+    if (password.length < 10) return 'Medium';
+    return 'Strong';
+  };
+
+  const getPasswordStrengthColor = (strength: string): string => {
+    switch (strength) {
+      case 'Weak': return colors.error;
+      case 'Medium': return colors.warning;
+      case 'Strong': return colors.success;
+      default: return colors.gray[400];
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -408,6 +523,15 @@ export default function MoreScreen() {
           )}
 
           <Button
+            title="Change Password"
+            onPress={() => setShowChangePassword(true)}
+            variant="outline"
+            size="lg"
+            style={{ marginBottom: spacing[3] }}
+            icon={<Key size={20} color={colors.black} />}
+          />
+
+          <Button
             title="Logout"
             onPress={handleLogout}
             variant="outline"
@@ -463,6 +587,126 @@ export default function MoreScreen() {
           <ChevronRight size={20} color={colors.gray[400]} />
         </TouchableOpacity>
       ))}
+
+      <Modal
+        visible={showChangePassword}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowChangePassword(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowChangePassword(false)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Change Password</Text>
+              <Text style={styles.modalDescription}>
+                Enter your current password and choose a new one.
+              </Text>
+
+              <View style={{ marginBottom: spacing[3] }}>
+                <View style={styles.passwordInputWrapper}>
+                  <Input
+                    placeholder="Current Password"
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    secureTextEntry={!showCurrentPassword}
+                    editable={!changingPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                    disabled={changingPassword}
+                  >
+                    {showCurrentPassword ? (
+                      <EyeOff size={20} color={colors.gray[500]} />
+                    ) : (
+                      <Eye size={20} color={colors.gray[500]} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={{ marginBottom: spacing[3] }}>
+                <View style={styles.passwordInputWrapper}>
+                  <Input
+                    placeholder="New Password (min 6 characters)"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry={!showNewPassword}
+                    editable={!changingPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowNewPassword(!showNewPassword)}
+                    disabled={changingPassword}
+                  >
+                    {showNewPassword ? (
+                      <EyeOff size={20} color={colors.gray[500]} />
+                    ) : (
+                      <Eye size={20} color={colors.gray[500]} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+                {newPassword.length > 0 && (
+                  <Text style={[styles.passwordStrength, { color: getPasswordStrengthColor(getPasswordStrength(newPassword)) }]}>
+                    Strength: {getPasswordStrength(newPassword)}
+                  </Text>
+                )}
+              </View>
+
+              <View style={{ marginBottom: spacing[4] }}>
+                <View style={styles.passwordInputWrapper}>
+                  <Input
+                    placeholder="Confirm New Password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showConfirmPassword}
+                    editable={!changingPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    disabled={changingPassword}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff size={20} color={colors.gray[500]} />
+                    ) : (
+                      <Eye size={20} color={colors.gray[500]} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={styles.modalButtons}>
+                <Button
+                  title="Cancel"
+                  onPress={() => {
+                    setShowChangePassword(false);
+                    setCurrentPassword('');
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  }}
+                  variant="outline"
+                  style={styles.modalButton}
+                  disabled={changingPassword}
+                />
+                <Button
+                  title="Change Password"
+                  onPress={handleChangePassword}
+                  loading={changingPassword}
+                  style={styles.modalButton}
+                />
+              </View>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </ScrollView>
   );
 }

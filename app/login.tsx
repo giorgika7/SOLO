@@ -82,13 +82,14 @@ export default function LoginScreen() {
 
     try {
       setResetLoading(true);
-      await authService.resetPassword(resetEmail.trim());
-      showToast('Password reset email sent!', 'success');
+      await authService.sendTemporaryPassword(resetEmail.trim());
+      showToast('Temporary password sent to your email!', 'success');
       setShowForgotPassword(false);
       setResetEmail('');
     } catch (err: any) {
-      console.error('Password reset failed:', err);
-      showToast('Failed to send reset email', 'error');
+      console.error('Failed to send temporary password:', err);
+      const errorMessage = err.message || 'Failed to send temporary password';
+      showToast(errorMessage, 'error');
     } finally {
       setResetLoading(false);
     }
@@ -312,9 +313,9 @@ export default function LoginScreen() {
         >
           <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Reset Password</Text>
+              <Text style={styles.modalTitle}>Get Temporary Password</Text>
               <Text style={styles.modalDescription}>
-                Enter your email address and we'll send you a link to reset your password.
+                Enter your email address and we'll send you a temporary password. You can change it after logging in.
               </Text>
 
               <Input
@@ -338,7 +339,7 @@ export default function LoginScreen() {
                   disabled={resetLoading}
                 />
                 <Button
-                  title="Send Reset Link"
+                  title="Send Temporary Password"
                   onPress={handleForgotPassword}
                   loading={resetLoading}
                   style={styles.modalButton}

@@ -56,19 +56,79 @@ export const authService = {
     return data;
   },
 
-  async resetPassword(email: string) {
+  async sendTemporaryPassword(email: string) {
     const normalizedEmail = email.toLowerCase().trim();
 
-    const { error } = await auth.resetPasswordForEmail(normalizedEmail, {
-      redirectTo: undefined,
+    console.log('📧 Requesting temporary password for:', normalizedEmail);
+
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase configuration is missing');
+    }
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-temp-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({ email: normalizedEmail }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ Failed to send temporary password:', data.error);
+      throw new Error(data.error || 'Failed to send temporary password');
+    }
+
+    console.log('✅ Temporary password sent successfully');
+    return data;
+  },
+
+  async updatePassword(currentPassword: string, newPassword: string) {
+    console.log('🔑 Updating password...');
+
+    const { data: { user } } = await auth.getUser();
+    if (!user || !user.email) {
+      throw new Error('No user logged in');
+    }
+
+    try {
+      const { error: verifyError } = await auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (verifyError) {
+        throw new Error('Current password is incorrect');
+      }
+    } catch (err) {
+      throw new Error('Current password is incorrect');
+    }
+
+    const { error } = await auth.updateUser({
+      password: newPassword,
     });
 
     if (error) {
-      console.error('❌ Password reset failed:', error);
+      console.error('❌ Password update failed:', error);
       throw error;
     }
 
-    console.log('✅ Password reset email sent');
+    if (user.user_metadata?.temp_password) {
+      await auth.updateUser({
+        data: {
+          ...user.user_metadata,
+          temp_password: false,
+          temp_password_created_at: null,
+        },
+      });
+    }
+
+    console.log('✅ Password updated successfully');
   },
 
   async ensureUserProfile(user: any) {
