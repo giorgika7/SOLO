@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { authService } from '@/services/auth';
 import { esimSync } from '@/services/esimSync';
 import type { User } from '@/types';
@@ -71,21 +71,26 @@ export const useAuth = () => {
     }
   };
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       console.log('👋 Signing out...');
       setLoading(true);
-      await authService.signOut();
-      setUser(null);
+
       esimSync.stopPolling();
+
+      setUser(null);
+
+      await authService.signOut();
+
       console.log('✅ Signed out successfully');
     } catch (err) {
       console.error('❌ Sign out failed:', err);
       setError(err instanceof Error ? err.message : 'Sign out failed');
+      throw err;
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return {
     user,

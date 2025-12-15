@@ -6,6 +6,7 @@ import { Card } from '@/components/Card';
 import { Button } from '@/components/Button';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorMessage } from '@/components/ErrorMessage';
+import { TabBar } from '@/components/TabBar';
 import { supabase } from '@/services/supabase';
 import { esimSync } from '@/services/esimSync';
 import { useAuth } from '@/hooks/useAuth';
@@ -190,11 +191,11 @@ export default function EsimScreen() {
     }
   };
 
-  const handleViewDetails = (esim: Esim) => {
+  const handleViewDetails = (esim: any) => {
     router.push(`/esim/${esim.id}`);
   };
 
-  const handleTopup = (esim: Esim) => {
+  const handleTopup = (esim: any) => {
     router.push(`/esim/${esim.id}/topup`);
   };
 
@@ -206,13 +207,13 @@ export default function EsimScreen() {
     }
   });
 
-  const renderEsimCard = ({ item }: { item: Esim }) => {
-    const usagePercentage = (item.dataUsed / item.dataTotal) * 100;
+  const renderEsimCard = ({ item }: { item: any }) => {
+    const usagePercentage = (item.data_used / item.data_total) * 100;
 
     return (
       <Card style={styles.esimCard}>
         <View style={styles.esimHeader}>
-          <Text style={styles.countryName}>{item.countryName}</Text>
+          <Text style={styles.countryName}>{item.country_name}</Text>
           <View style={styles.statusBadge}>
             <Text style={styles.statusText}>
               {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
@@ -228,14 +229,14 @@ export default function EsimScreen() {
             />
           </View>
           <Text style={styles.dataText}>
-            {formatDataAmount(item.dataUsed)} / {formatDataAmount(item.dataTotal)} used
+            {formatDataAmount(item.data_used)} / {formatDataAmount(item.data_total)} used
           </Text>
         </View>
 
         <View style={styles.detailsContainer}>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Validity</Text>
-            <Text style={styles.detailValue}>Until {item.expiryDate}</Text>
+            <Text style={styles.detailValue}>Until {item.expiry_date}</Text>
           </View>
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>ICCID</Text>

@@ -170,6 +170,7 @@ export default function MoreScreen() {
   const [esimCount, setEsimCount] = useState({ active: 0, expired: 0, total: 0 });
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -228,18 +229,22 @@ export default function MoreScreen() {
           onPress: async () => {
             try {
               console.log('👋 Logging out...');
+              setLoggingOut(true);
               haptics.medium();
 
               await signOut();
 
               showToast('Logged out successfully', 'success');
 
-              console.log('🔄 Redirecting to login...');
-              router.replace('/login');
+              setTimeout(() => {
+                console.log('🔄 Redirecting to login...');
+                router.replace('/login');
+              }, 100);
 
             } catch (error) {
               console.error('❌ Logout error:', error);
               showToast('Failed to logout', 'error');
+              setLoggingOut(false);
             }
           },
         },
@@ -407,6 +412,7 @@ export default function MoreScreen() {
             onPress={handleLogout}
             variant="outline"
             size="lg"
+            loading={loggingOut}
             style={styles.logoutButton}
             icon={<LogOut size={20} color={colors.black} />}
           />

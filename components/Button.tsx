@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator, View } from 'react-native';
 import { colors, typography, spacing, borderRadius, shadows } from '@/constants/theme';
 
 interface ButtonProps {
@@ -9,6 +9,7 @@ interface ButtonProps {
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
+  icon?: React.ReactNode;
   style?: ViewStyle;
   textStyle?: TextStyle;
 }
@@ -18,6 +19,12 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'row',
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
   },
   primary: {
     backgroundColor: colors.black,
@@ -78,10 +85,13 @@ export const Button: React.FC<ButtonProps> = ({
   size = 'md',
   loading = false,
   disabled = false,
+  icon,
   style,
   textStyle,
 }) => {
   const buttonDisabled = disabled || loading;
+
+  const textColor = variant === 'primary' ? colors.white : colors.black;
 
   return (
     <TouchableOpacity
@@ -95,15 +105,22 @@ export const Button: React.FC<ButtonProps> = ({
         style,
       ]}
     >
-      <Text
-        style={[
-          styles[`${variant}Text` as keyof typeof styles],
-          styles[`text${size.charAt(0).toUpperCase() + size.slice(1)}` as keyof typeof styles],
-          textStyle,
-        ]}
-      >
-        {loading ? 'Loading...' : title}
-      </Text>
+      {loading ? (
+        <ActivityIndicator size="small" color={textColor} />
+      ) : (
+        <View style={styles.content}>
+          {icon}
+          <Text
+            style={[
+              styles[`${variant}Text` as keyof typeof styles],
+              styles[`text${size.charAt(0).toUpperCase() + size.slice(1)}` as keyof typeof styles],
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
