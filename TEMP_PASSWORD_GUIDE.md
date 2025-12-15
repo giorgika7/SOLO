@@ -96,14 +96,16 @@ Temporary passwords expire:
 
 ## Environment Variables
 
-Required for the Edge Function:
-- `SUPABASE_URL` (automatically available)
-- `SUPABASE_SERVICE_ROLE_KEY` (automatically available)
-- `RESEND_API_KEY` (optional - for email sending)
+### Edge Function (Automatic - Provided by Bolt.new)
+- `SUPABASE_URL` - Automatically injected by Bolt.new
+- `SUPABASE_SERVICE_ROLE_KEY` - Automatically injected by Bolt.new
 
-Available in frontend:
-- `EXPO_PUBLIC_SUPABASE_URL`
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+### Edge Function (Optional - Manual Configuration)
+- `RESEND_KEY` - For email sending via Resend (you need to add this manually in Supabase dashboard)
+
+### Frontend
+- `EXPO_PUBLIC_SUPABASE_URL` - Automatically configured
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY` - Automatically configured
 
 ## Email Configuration (Optional)
 
@@ -116,7 +118,7 @@ The Edge Function supports email sending via Resend:
 
 ### Development Mode (No Email Service)
 
-If no RESEND_API_KEY is configured:
+If no `RESEND_KEY` is configured:
 - Function still works and generates temporary password
 - Password is returned in API response as `debug_password` field
 - Password is logged to console
@@ -203,7 +205,7 @@ If users report not receiving the temporary password email:
 1. Check spam/junk folder
 2. Verify email is correct
 3. Check Edge Function logs in Supabase dashboard
-4. Verify RESEND_API_KEY is configured (if using email)
+4. Verify `RESEND_KEY` is configured (if using email)
 5. Manually communicate the password (check console logs)
 
 ## Differences from Old System
@@ -228,13 +230,16 @@ Before deploying to production, you should:
 
 1. **Configure Email Service**
    - Sign up for Resend (or another email service)
-   - Get your API key
-   - Set `RESEND_API_KEY` environment variable in Supabase
+   - Get your API key from Resend dashboard
+   - In Supabase Dashboard:
+     - Go to Project Settings > Edge Functions
+     - Add a new secret named `RESEND_KEY` with your Resend API key
+     - **Note**: Use `RESEND_KEY` not `RESEND_API_KEY` (Bolt.new doesn't allow SUPABASE_ prefix)
    - Verify domain ownership in Resend dashboard
-   - Update the "from" email address in the Edge Function
+   - Update the "from" email address in the Edge Function (line 162)
 
 2. **Remove Development Code** (Optional but Recommended)
-   - The `debug_password` field will automatically not be included when `RESEND_API_KEY` is set
+   - The `debug_password` field will automatically not be included when `RESEND_KEY` is set
    - However, you may want to remove the development code entirely from `app/login.tsx`:
      ```typescript
      // Remove this section in production:
@@ -253,10 +258,12 @@ Before deploying to production, you should:
 3. **Test Email Delivery**
    - Test with your own email address first
    - Check spam/junk folders
-   - Verify email formatting and links
-   - Test with different email providers (Gmail, Outlook, etc.)
+   - Verify email formatting and appearance
+   - Test with different email providers (Gmail, Outlook, Yahoo, etc.)
+   - Check Edge Function logs to confirm successful delivery
 
 4. **Monitor Usage**
    - Check Edge Function logs in Supabase dashboard
    - Monitor for failed email deliveries
    - Track temporary password usage patterns
+   - Set up alerts for high failure rates

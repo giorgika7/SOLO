@@ -34,9 +34,28 @@ Deno.serve(async (req: Request) => {
 
     const normalizedEmail = email.toLowerCase().trim();
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    console.log("🔧 Environment check:", {
+      hasSupabaseUrl: !!supabaseUrl,
+      hasServiceKey: !!supabaseServiceKey,
+    });
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("❌ Missing Supabase credentials");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      supabaseUrl,
+      supabaseServiceKey,
       {
         auth: {
           autoRefreshToken: false,
@@ -121,32 +140,47 @@ Deno.serve(async (req: Request) => {
       </div>
     `;
 
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const resendKey = Deno.env.get("RESEND_KEY");
 
     let responseData: { success: boolean; message: string; debug_password?: string } = {
       success: true,
       message: "Temporary password has been sent to your email",
     };
 
-    if (resendApiKey) {
-      const resendResponse = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "SOLO eSIM <noreply@solo-esim.com>",
-          to: [normalizedEmail],
-          subject: "SOLO eSIM - Your Temporary Password",
-          html: emailHtml,
-        }),
-      });
+    let emailSent = false;
 
-      if (!resendResponse.ok) {
-        console.error("Failed to send email via Resend");
+    if (resendKey) {
+      console.log("📧 Attempting to send email via Resend...");
+      try {
+        const resendResponse = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "SOLO eSIM <noreply@solo-esim.com>",
+            to: [normalizedEmail],
+            subject: "SOLO eSIM - Your Temporary Password",
+            html: emailHtml,
+          }),
+        });
+
+        if (resendResponse.ok) {
+          console.log("✅ Email sent successfully via Resend");
+          emailSent = true;
+        } else {
+          const errorData = await resendResponse.text();
+          console.error("❌ Failed to send email via Resend:", errorData);
+        }
+      } catch (emailError) {
+        console.error("❌ Email sending error:", emailError);
       }
     } else {
+      console.log("ℹ️ No RESEND_KEY configured");
+    }
+
+    if (!emailSent) {
       console.log("⚠️ DEVELOPMENT ONLY - REMOVE IN PRODUCTION");
       console.log("Email would be sent to:", normalizedEmail);
       console.log("Temporary password:", tempPassword);
