@@ -40,12 +40,11 @@ export default function TabLayout() {
     );
   }
 
-  if (!user) {
-    console.log('🚫 Tab Layout: No user, redirecting to login');
-    return <Redirect href="/login" />;
+  if (user) {
+    console.log('✅ Tab Layout: User authenticated, showing tabs');
+  } else {
+    console.log('👤 Tab Layout: Guest mode, showing tabs');
   }
-
-  console.log('✅ Tab Layout: User authenticated, showing tabs');
 
   return (
     <Tabs
